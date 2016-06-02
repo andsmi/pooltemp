@@ -19,3 +19,4 @@ Tested with http://www.amazon.com/Pellor-Wireless-Floating-Thermometer-Solar/dp/
 And with http://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=rtl2832u&rh=i%3Aaps%2Ck%3Artl2832u
 
 
+![Image Alt](image.png)
