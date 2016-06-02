@@ -16,7 +16,7 @@ You can also save to a CSV on onedrive and then use PowerBI tool to get the temp
 
 Tested with http://www.amazon.com/Pellor-Wireless-Floating-Thermometer-Solar/dp/B01AO13F06/ref=sr_1_14?ie=UTF8&qid=1464897052&sr=8-14&keywords=pool+temp+wireless
 
-And with http://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=rtl2832u&rh=i%3Aaps%2Ck%3Artl2832u
+And with basic cheap USB SDR (http://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=rtl2832u&rh=i%3Aaps%2Ck%3Artl2832u)
 
 
 ![alt tag](https://raw.githubusercontent.com/andsmi/pooltemp/master/image.png)
