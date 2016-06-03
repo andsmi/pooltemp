@@ -2,6 +2,7 @@ var keyring = require('keyring');
 var request = require('request');
 var sys = require('util')
 var exec = require('child_process').exec;
+var fs = require("fs");
 
 var keyringApi = keyring.instance().load();
 
@@ -32,7 +33,13 @@ if (!makerkey || makerkey == '')
     console.log(' node_modiles\\.bin\\keyring.cmd store -k tempchange.makerkey -v MAKERKEY')
     return;
 }
-
+var onedriveOutputPath = keyringApi.retrieve('tempchange.onedriveOutputPath');
+if (!onedriveOutputPath || onedriveOutputPath==''){
+	console.log('use keyring to set onedriveOutputPath')
+	onedriveOutputPath = process.env["USERPROFILE"] + '\\Onedrive\\pooltemp.csv'
+	console.log("onedrive set to "+onedriveOutputPath)
+ }
+ fs.writeFile(onedriveOutputPath,'"datetime","temp","diff"\n', function(err){});
 /*
 var readline = require('readline');
 var rl = readline.createInterface({
@@ -61,10 +68,13 @@ function getReading()
 
 
     child = exec(execstring, function (error, stdout, stderr) {
-        if(onedriveOutputPath!='') /* Save out for onedrive.... */
+     /*   if(onedriveOutputPath!='') /* Save out for onedrive.... 
         {
             child = exec(execstringOneDrive + ' > ' + onedriveOutputPath, function (error, stdout, stderr) {
             })}
+			*/
+			
+
             
         //sys.print('stdout: ' + stdout);
         var t = stdout.toString().split('\n')
@@ -83,7 +93,11 @@ function getReading()
                 var d = new Date();
                 if(lastReportedHour!=d.getHours())
                 {
-                    
+                    			if(onedriveOutputPath){
+				 fs.appendFile(onedriveOutputPath,'"'+ Date.now() +'",'+ convertToF(newval.temperature_C) +','+change+'\n', function(err){});
+
+				
+			}
                     lastReportedHour = d.getHours();
                     console.log(new Date() + ' ' + convertToF(newval.temperature_C )  + ' (' + change + ')  Reporting Hourly')
                     request({method:'POST',form:{'value1':new Date(),'value2':convertToF(newval.temperature_C),'value3':change},
