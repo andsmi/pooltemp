@@ -3,17 +3,24 @@ var request = require('request');
 var sys = require('util')
 var exec = require('child_process').exec;
 var fs = require("fs");
+var moment = require("moment")
 
 var keyringApi = keyring.instance().load();
 
 var makerkey = ''
 var iftttTempChangeEvent = 'http://maker.ifttt.com/trigger/{event}/with/key/{makerkey}'
 var makerkey = keyringApi.retrieve('tempchange.makerkey')
-
-
+var forecastio = 'https://api.forecast.io/forecast/{forecastiokey}/{loc}'
+var loc = keyringApi.retrieve('tempchange.loc')
+var forecastiokey = keyringApi.retrieve('tempchange.forecastiokey')
+if(forecastiokey)
+{
+	forecastio = forecastio.replace('{forecastiokey}',forecastiokey).replace('{loc}',loc)
+	console.log(forecastio);
+}
 var waittime = 120; // Seconds between readings
 
-console.log('starting');
+console.log('starting');		
 //Before running the example, retrieve your maker key from and then from the command line do the following:
 //  keyring store -k tempchange.makerkey -v MAKERKEY
 
@@ -36,10 +43,10 @@ if (!makerkey || makerkey == '')
 var onedriveOutputPath = keyringApi.retrieve('tempchange.onedriveOutputPath');
 if (!onedriveOutputPath || onedriveOutputPath==''){
 	console.log('use keyring to set onedriveOutputPath')
-	onedriveOutputPath = process.env["USERPROFILE"] + '\\Onedrive\\pooltemp.csv'
+	onedriveOutputPath = process.env["USERPROFILE"] + '\\Onedrive\\'
 	console.log("onedrive set to "+onedriveOutputPath)
  }
- fs.writeFile(onedriveOutputPath,'"datetime","temp","diff"\n', function(err){});
+ fs.writeFile(onedriveOutputPath + 'pooltemp_history.csv','"datetime","temp","diff"\n', function(err){});
 /*
 var readline = require('readline');
 var rl = readline.createInterface({
@@ -55,13 +62,39 @@ var lastreadvalue = 0.0;
                 var fTempVal = (cTempVal * (9/5)) + 32;
 return fTempVal;
  }
-
+	
+	var forecast;
+	var curcast = '';
+	var curcasthead = '';
  var errorCount = 0;
 //var execstring = 'type output.json' /* TEST MOE */
  var execstring = 'rtl_433.exe -F json -T 90 -q '
  var execstringOneDrive = 'rtl_433.exe -F csv -T 90 -q '
 var lastReportedHour = 0;
-var onedriveOutputPath = "c:\\users\\kathleen\\onedrive\\pooltemp.csv";
+//var onedriveOutputPath = "c:\\users\\kathleen\\onedrive\\pooltemp.csv";
+
+function getForecastFirst()
+{
+	if(forecastiokey)	
+	{
+		 request({method:'GET',
+                        url: forecastio
+                    }, function(error, response, body) {
+						//console.log(response);
+						forecast = JSON.parse(body).currently
+						curcasthead = ('"forecast","outdoortemperature","windspeed","precipIntensity"');
+						curcast = ('"' + forecast.summary + '",' + forecast.temperature + ',' + forecast.windSpeed + ',' + forecast.precipIntensity )
+						getReading();
+//                        console.log(new Date() + ' |--' + convertToF(newval.temperature_C )  + ' (' + change + ')  Reported Hourly.')
+                        //console.log('Error was ', error);
+                    });
+
+	}
+	else{
+		getReading();
+	}
+}
+
 function getReading()
 {
    
@@ -78,7 +111,6 @@ function getReading()
             
         //sys.print('stdout: ' + stdout);
         var t = stdout.toString().split('\n')
-        console.log('Oh this isnt right....')
         console.log(t[t.length -2]);
         if(t.length > 0)
         {
@@ -90,17 +122,21 @@ function getReading()
                 {
                     change = 0
                 }
-                var d = new Date();
+                var d = moment().format('MM/DD/YYYY, hh:mm:ss');
+				var dateString = d;
                 if(lastReportedHour!=d.getHours())
                 {
                     			if(onedriveOutputPath){
-				 fs.appendFile(onedriveOutputPath,'"'+ Date.now() +'",'+ convertToF(newval.temperature_C) +','+change+'\n', function(err){});
+				 fs.appendFile(onedriveOutputPath + 'pooltemp_history.csv','"'+ dateString +'",'+ convertToF(newval.temperature_C) +','+change+',' + curcast + +'\n', function(err){});
+				  fs.writeFile(onedriveOutputPath,'"datetime","temp","diff",' + curcasthead + '\n' + 
+'"'+ dateString +'",'+ convertToF(newval.temperature_C) +	','+change+',' + curcast + '\n'				  , function(err){});
 
+				
 				
 			}
                     lastReportedHour = d.getHours();
                     console.log(new Date() + ' ' + convertToF(newval.temperature_C )  + ' (' + change + ')  Reporting Hourly')
-                    request({method:'POST',form:{'value1':new Date(),'value2':convertToF(newval.temperature_C),'value3':change},
+                    request({method:'POST',form:{'value1':forecast.temperature + ', ' + forecast.Summary,'value2':convertToF(newval.temperature_C),'value3':change},
                         url: iftttTempChangeEvent.replace('{makerkey}',makerkey).replace('{event}','temp_hourly')
                     }, function(error, response, body) {
                         console.log(new Date() + ' |--' + convertToF(newval.temperature_C )  + ' (' + change + ')  Reported Hourly.')
@@ -122,13 +158,13 @@ function getReading()
                         change = 'NEW';
                     }else if(Math.abs(change)>5)
                     {
-                        change='#ERR';
+                        change=0;
                     }
                  
                     lastreadvalue = newval.temperature_C;
                     console.log(new Date() + ' ' + convertToF(newval.temperature_C )  + ' (' + change + ')  Reporting')
                  
-                    request({method:'POST',form:{'value1':new Date(),'value2':convertToF(lastreadvalue),'value3':change},
+                    request({method:'POST',form:{'value1':forecast.temperature + ', ' + forecast.Summary,'value2':convertToF(lastreadvalue),'value3':change},
                         url: iftttTempChangeEvent.replace('{makerkey}',makerkey).replace('{event}','temp_change')
                     }, function(error, response, body) {
                         console.log( new Date() + ' |--' + convertToF(newval.temperature_C )  + ' (' + change + ')  Reported Change');
@@ -162,7 +198,7 @@ function getReading()
             }
         }
 
-        setTimeout(function(){ getReading();}, waittime * 1000)
+        setTimeout(function(){ getForecastFirst();}, waittime * 1000)
 
     });
 
@@ -170,7 +206,7 @@ function getReading()
     
 }
 
-getReading();
+getForecastFirst();
 
 /*
 rl.on('line', function(line){
