@@ -122,8 +122,8 @@ function getReading()
                 {
                     change = 0
                 }
-                var d = moment().format('MM/DD/YYYY, hh:mm:ss');
-				var dateString = d;
+                var d = new Date();
+				var dateString = moment().format('MM/DD/YYYY, hh:mm:ss');
                 if(lastReportedHour!=d.getHours())
                 {
                     			if(onedriveOutputPath){
